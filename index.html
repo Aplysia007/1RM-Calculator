@@ -1,94 +1,531 @@
 <!DOCTYPE html>
-<html lang="de">
+<html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>1RM Rechner</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="theme-color" content="#f2f2f7">
+  <title>1RM Calculator</title>
   <style>
+    :root { color-scheme: light dark; }
+    * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
     body {
-      font-family: -apple-system, BlinkMacSystemFont, sans-serif;
-      text-align: center;
       margin: 0;
-      padding: 20px;
+      padding: 24px 16px 40px;
+      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", Arial, sans-serif;
       background: #f2f2f7;
+      color: #111111;
     }
-    h1 {
-      margin-top: 40px;
+    .wrap { max-width: 560px; margin: 0 auto; padding-top: 12px; }
+    h1 { margin: 0 0 8px; font-size: 32px; text-align: center; }
+    .subtitle {
+      margin: 0 0 18px;
+      text-align: center;
+      color: #666666;
+      font-size: 15px;
+      line-height: 1.4;
     }
     .card {
-      background: white;
-      padding: 20px;
-      border-radius: 16px;
-      box-shadow: 0 4px 10px rgba(0,0,0,0.1);
-      max-width: 400px;
-      margin: auto;
+      background: #ffffff;
+      border-radius: 18px;
+      padding: 18px;
+      box-shadow: 0 6px 24px rgba(0, 0, 0, 0.08);
+    }
+    label {
+      display: block;
+      margin: 14px 0 8px;
+      font-size: 15px;
+      font-weight: 600;
+      text-align: left;
     }
     input, select, button {
-      width: 90%;
-      font-size: 18px;
-      margin: 10px 0;
-      padding: 12px;
-      border-radius: 10px;
-      border: 1px solid #ccc;
+      width: 100%;
+      min-height: 48px;
+      font-size: 17px;
+      border-radius: 12px;
+    }
+    input, select {
+      padding: 12px 14px;
+      border: 1px solid #d1d1d6;
+      background: #ffffff;
+      color: #111111;
+      appearance: none;
+      -webkit-appearance: none;
     }
     button {
+      margin-top: 18px;
+      border: 0;
+      padding: 12px 16px;
       background: #007aff;
-      color: white;
-      border: none;
-      font-weight: bold;
+      color: #ffffff;
+      font-weight: 700;
+      cursor: pointer;
+      touch-action: manipulation;
     }
-    #result {
-      font-size: 28px;
-      margin-top: 20px;
-      font-weight: bold;
+    .result {
+      margin-top: 18px;
+      padding: 14px;
+      border-radius: 14px;
+      background: #f7f7fa;
+      min-height: 72px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 24px;
+      font-weight: 700;
+      text-align: center;
+    }
+    .results-list {
+      margin-top: 18px;
+      display: grid;
+      gap: 10px;
+    }
+    .result-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      background: #f7f7fa;
+      border-radius: 14px;
+      padding: 12px 14px;
+    }
+    .formula-name { font-size: 16px; font-weight: 600; }
+    .formula-value { font-size: 17px; font-weight: 700; white-space: nowrap; }
+    .hint {
+      margin-top: 14px;
+      font-size: 13px;
+      color: #666666;
+      text-align: center;
+      line-height: 1.4;
+    }
+    @media (prefers-color-scheme: dark) {
+      body { background: #000000; color: #ffffff; }
+      .subtitle, .hint { color: #a1a1a6; }
+      .card { background: #1c1c1e; box-shadow: none; }
+      input, select {
+        background: #2c2c2e;
+        border-color: #3a3a3c;
+        color: #ffffff;
+      }
+      .result, .result-row { background: #2c2c2e; color: #ffffff; }
     }
   </style>
 </head>
 <body>
+  <div class="wrap">
+    <h1>1RM Calculator</h1>
+    <p class="subtitle">Calculate 1RM from Weight and Reps, or estimate Reps from Weight and 1RM across multiple formulas.</p>
 
-  <h1>1RM Rechner</h1>
+    <div class="card">
+      <label for="mode">Mode</label>
+      <select id="mode">
+        <option value="rm">Weight + Reps → 1RM</option>
+        <option value="reps">Weight + 1RM → Reps</option>
+      </select>
 
-  <div class="card">
-    <input type="number" id="weight" placeholder="Gewicht (kg)">
-    <input type="number" id="reps" placeholder="Wiederholungen">
+      <div id="rmInputs">
+        <label for="weight">Weight [kg]</label>
+        <input inputmode="decimal" type="number" step="0.1" min="0" id="weight" placeholder="e.g. 80">
 
-    <select id="formula">
-      <option value="epley">Epley</option>
-      <option value="brzycki">Brzycki</option>
-      <option value="lombardi">Lombardi</option>
-    </select>
+        <label for="reps">Reps [n]</label>
+        <input inputmode="decimal" type="number" step="0.1" min="0" id="reps" placeholder="e.g. 5">
+      </div>
 
-    <button type="button" onclick="calculate()">Berechnen</button>
+      <div id="repsInputs" style="display:none;">
+        <label for="weight2">Weight [kg]</label>
+        <input inputmode="decimal" type="number" step="0.1" min="0" id="weight2" placeholder="e.g. 80">
 
-    <div id="result"></div>
+        <label for="oneRmInput">1RM [kg]</label>
+        <input inputmode="decimal" type="number" step="0.1" min="0" id="oneRmInput" placeholder="e.g. 95">
+      </div>
+
+      <label for="formula">Formula</label>
+      <select id="formula">
+        <option value="all">All formulas</option>
+        <option value="average">Average 1RM</option>
+        <option value="range">Range (min/max)</option>
+        <option value="ci95">CI95% (lower/upper)</option>
+        <option value="epley">Epley</option>
+        <option value="baechle">Baechle</option>
+        <option value="brzycki">Brzycki</option>
+        <option value="berger">Berger</option>
+        <option value="lombardi">Lombardi</option>
+        <option value="brown">Brown</option>
+        <option value="oconner">O’Conner</option>
+        <option value="landers">Landers</option>
+        <option value="adams">Adams</option>
+        <option value="wathen">Wathen</option>
+      </select>
+
+      <button type="button" id="calcBtn">Calculate</button>
+
+      <div class="result" id="result" aria-live="polite">Enter values</div>
+      <div class="results-list" id="resultsList"></div>
+      <div class="hint">Tip: In Safari, use Share → Add to Home Screen for an app-like shortcut.</div>
+    </div>
   </div>
 
   <script>
-    function calculate() {
-      let weight = parseFloat(document.getElementById("weight").value);
-      let reps = parseFloat(document.getElementById("reps").value);
-      let formula = document.getElementById("formula").value;
+    (function () {
+      var modeSelect = document.getElementById("mode");
+      var formulaSelect = document.getElementById("formula");
+      var calcBtn = document.getElementById("calcBtn");
+      var resultEl = document.getElementById("result");
+      var resultsListEl = document.getElementById("resultsList");
+      var rmInputs = document.getElementById("rmInputs");
+      var repsInputs = document.getElementById("repsInputs");
 
-      if (!weight || !reps) {
-        document.getElementById("result").innerText = "Bitte Werte eingeben!";
-        return;
+      var weightInput = document.getElementById("weight");
+      var repsInput = document.getElementById("reps");
+      var weight2Input = document.getElementById("weight2");
+      var oneRmInput = document.getElementById("oneRmInput");
+
+      var formulaNames = {
+        epley: "Epley",
+        baechle: "Baechle",
+        brzycki: "Brzycki",
+        berger: "Berger",
+        lombardi: "Lombardi",
+        brown: "Brown",
+        oconner: "O’Conner",
+        landers: "Landers",
+        adams: "Adams",
+        wathen: "Wathen"
+      };
+
+      function parseNumber(value) {
+        if (typeof value !== "string") return NaN;
+        return parseFloat(value.replace(",", "."));
       }
 
-      let oneRM;
-
-      if (formula === "epley") {
-        oneRM = weight * (1 + reps / 30);
-      } else if (formula === "brzycki") {
-        oneRM = weight * (36 / (37 - reps));
-      } else if (formula === "lombardi") {
-        oneRM = weight * Math.pow(reps, 0.10);
+      function setMainResult(text) {
+        resultEl.textContent = text;
       }
 
-      oneRM = oneRM.toFixed(1);
+      function clearList() {
+        resultsListEl.innerHTML = "";
+      }
 
-      document.getElementById("result").innerText = "1RM: " + oneRM + " kg";
-    }
+      function addListRow(name, value) {
+        var row = document.createElement("div");
+        row.className = "result-row";
+
+        var left = document.createElement("div");
+        left.className = "formula-name";
+        left.textContent = name;
+
+        var right = document.createElement("div");
+        right.className = "formula-value";
+        right.textContent = value;
+
+        row.appendChild(left);
+        row.appendChild(right);
+        resultsListEl.appendChild(row);
+      }
+
+      function formatKg(value) {
+        return value.toFixed(1) + " kg";
+      }
+
+      function formatReps(value) {
+        return value.toFixed(1) + " reps";
+      }
+
+      function validPositive(value) {
+        return isFinite(value) && value > 0;
+      }
+
+      function oneRmFormulas(weight, reps) {
+        return {
+          epley: weight * (1 + reps / 30),
+          baechle: weight * (1 + 0.033 * reps),
+          brzycki: weight / (1.0278 - 0.0278 * reps),
+          berger: weight / (1.0261 - 0.0262 * reps),
+          lombardi: weight * Math.pow(reps, 0.10),
+          brown: weight * (1 + 0.0333 * reps),
+          oconner: weight * (1 + 0.025 * reps),
+          landers: weight / (1.013 - 0.0267123 * reps),
+          adams: weight / (1 - 0.02 * reps),
+          wathen: (100 * weight) / (48.8 + 53.8 * Math.exp(-0.075 * reps))
+        };
+      }
+
+      function repsFormulas(weight, oneRM) {
+        var ratio = oneRM / weight;
+        return {
+          epley: 30 * (ratio - 1),
+          baechle: (ratio - 1) / 0.033,
+          brzycki: (1.0278 - (weight / oneRM)) / 0.0278,
+          berger: (1.0261 - (weight / oneRM)) / 0.0262,
+          lombardi: Math.pow(ratio, 10),
+          brown: (ratio - 1) / 0.0333,
+          oconner: (ratio - 1) / 0.025,
+          landers: (1.013 - (weight / oneRM)) / 0.0267123,
+          adams: (1 - (weight / oneRM)) / 0.02,
+          wathen: -Math.log(((100 * weight / oneRM) - 48.8) / 53.8) / 0.075
+        };
+      }
+
+      function validValuesArray(values) {
+        return Object.keys(values)
+          .map(function (key) { return values[key]; })
+          .filter(function (v) { return isFinite(v) && v > 0; });
+      }
+
+      function averageOfValid(values) {
+        var arr = validValuesArray(values);
+        if (!arr.length) return NaN;
+        var sum = arr.reduce(function (a, b) { return a + b; }, 0);
+        return sum / arr.length;
+      }
+
+      function rangeOfValid(values) {
+        var arr = validValuesArray(values);
+        if (!arr.length) return null;
+        return {
+          min: Math.min.apply(null, arr),
+          max: Math.max.apply(null, arr)
+        };
+      }
+
+      function stdDevSample(arr) {
+        if (!arr || arr.length < 2) return NaN;
+        var mean = arr.reduce(function (a, b) { return a + b; }, 0) / arr.length;
+        var variance = arr.reduce(function (acc, value) {
+          var diff = value - mean;
+          return acc + diff * diff;
+        }, 0) / (arr.length - 1);
+        return Math.sqrt(variance);
+      }
+
+      function ci95OfValid(values) {
+        var arr = validValuesArray(values);
+        if (!arr.length) return null;
+        var mean = arr.reduce(function (a, b) { return a + b; }, 0) / arr.length;
+        if (arr.length === 1) {
+          return { lower: mean, upper: mean };
+        }
+        var sd = stdDevSample(arr);
+        var se = sd / Math.sqrt(arr.length);
+        var margin = 1.96 * se;
+        return {
+          lower: mean - margin,
+          upper: mean + margin
+        };
+      }
+
+      function switchMode() {
+        clearList();
+        if (modeSelect.value === "rm") {
+          rmInputs.style.display = "";
+          repsInputs.style.display = "none";
+          formulaSelect.innerHTML = `
+            <option value="all">All formulas</option>
+            <option value="average">Average 1RM</option>
+            <option value="range">Range (min/max)</option>
+            <option value="ci95">CI95% (lower/upper)</option>
+            <option value="epley">Epley</option>
+            <option value="baechle">Baechle</option>
+            <option value="brzycki">Brzycki</option>
+            <option value="berger">Berger</option>
+            <option value="lombardi">Lombardi</option>
+            <option value="brown">Brown</option>
+            <option value="oconner">O’Conner</option>
+            <option value="landers">Landers</option>
+            <option value="adams">Adams</option>
+            <option value="wathen">Wathen</option>
+          `;
+          setMainResult("Enter Weight and Reps");
+        } else {
+          rmInputs.style.display = "none";
+          repsInputs.style.display = "";
+          formulaSelect.innerHTML = `
+            <option value="all">All formulas</option>
+            <option value="average">Average Reps</option>
+            <option value="range">Range (min/max)</option>
+            <option value="ci95">CI95% (lower/upper)</option>
+            <option value="epley">Epley</option>
+            <option value="baechle">Baechle</option>
+            <option value="brzycki">Brzycki</option>
+            <option value="berger">Berger</option>
+            <option value="lombardi">Lombardi</option>
+            <option value="brown">Brown</option>
+            <option value="oconner">O’Conner</option>
+            <option value="landers">Landers</option>
+            <option value="adams">Adams</option>
+            <option value="wathen">Wathen</option>
+          `;
+          setMainResult("Enter Weight and 1RM");
+        }
+      }
+
+      function calculate1RM() {
+        var weight = parseNumber(weightInput.value);
+        var reps = parseNumber(repsInput.value);
+        var selected = formulaSelect.value;
+
+        if (!validPositive(weight) || !validPositive(reps)) {
+          setMainResult("Please enter valid values");
+          return;
+        }
+
+        var values = oneRmFormulas(weight, reps);
+
+        if (selected === "all") {
+          var avgAll = averageOfValid(values);
+          var rangeAll = rangeOfValid(values);
+          var ciAll = ci95OfValid(values);
+          setMainResult("Average 1RM: " + formatKg(avgAll));
+          addListRow("Range", formatKg(rangeAll.min) + " – " + formatKg(rangeAll.max));
+          addListRow("CI95%", formatKg(ciAll.lower) + " – " + formatKg(ciAll.upper));
+          Object.keys(formulaNames).forEach(function (key) {
+            var value = values[key];
+            addListRow(formulaNames[key], validPositive(value) ? formatKg(value) : "not valid");
+          });
+          return;
+        }
+
+        if (selected === "average") {
+          var average = averageOfValid(values);
+          if (!validPositive(average)) {
+            setMainResult("Not valid with these values");
+            return;
+          }
+          setMainResult("Average 1RM: " + formatKg(average));
+          addListRow("Average 1RM", formatKg(average));
+          return;
+        }
+
+        if (selected === "range") {
+          var range = rangeOfValid(values);
+          if (!range) {
+            setMainResult("Not valid with these values");
+            return;
+          }
+          setMainResult("Range: " + formatKg(range.min) + " – " + formatKg(range.max));
+          addListRow("Lower", formatKg(range.min));
+          addListRow("Upper", formatKg(range.max));
+          return;
+        }
+
+        if (selected === "ci95") {
+          var ci = ci95OfValid(values);
+          if (!ci) {
+            setMainResult("Not valid with these values");
+            return;
+          }
+          setMainResult("CI95%: " + formatKg(ci.lower) + " – " + formatKg(ci.upper));
+          addListRow("Lower", formatKg(ci.lower));
+          addListRow("Upper", formatKg(ci.upper));
+          return;
+        }
+
+        var result = values[selected];
+        if (!validPositive(result)) {
+          setMainResult("Not valid with these values");
+          return;
+        }
+
+        setMainResult(formulaNames[selected] + ": " + formatKg(result));
+        addListRow(formulaNames[selected], formatKg(result));
+      }
+
+      function calculateReps() {
+        var weight = parseNumber(weight2Input.value);
+        var oneRM = parseNumber(oneRmInput.value);
+        var selected = formulaSelect.value;
+
+        if (!validPositive(weight) || !validPositive(oneRM) || oneRM < weight) {
+          setMainResult("1RM must be at least as high as Weight");
+          return;
+        }
+
+        var values = repsFormulas(weight, oneRM);
+
+        if (selected === "all") {
+          var avgAll = averageOfValid(values);
+          var rangeAll = rangeOfValid(values);
+          var ciAll = ci95OfValid(values);
+          setMainResult("Average Reps: " + formatReps(avgAll));
+          addListRow("Range", formatReps(rangeAll.min) + " – " + formatReps(rangeAll.max));
+          addListRow("CI95%", formatReps(ciAll.lower) + " – " + formatReps(ciAll.upper));
+          Object.keys(formulaNames).forEach(function (key) {
+            var value = values[key];
+            addListRow(formulaNames[key], validPositive(value) ? formatReps(value) : "not valid");
+          });
+          return;
+        }
+
+        if (selected === "average") {
+          var average = averageOfValid(values);
+          if (!validPositive(average)) {
+            setMainResult("Not valid with these values");
+            return;
+          }
+          setMainResult("Average Reps: " + formatReps(average));
+          addListRow("Average Reps", formatReps(average));
+          return;
+        }
+
+        if (selected === "range") {
+          var range = rangeOfValid(values);
+          if (!range) {
+            setMainResult("Not valid with these values");
+            return;
+          }
+          setMainResult("Range: " + formatReps(range.min) + " – " + formatReps(range.max));
+          addListRow("Lower", formatReps(range.min));
+          addListRow("Upper", formatReps(range.max));
+          return;
+        }
+
+        if (selected === "ci95") {
+          var ci = ci95OfValid(values);
+          if (!ci) {
+            setMainResult("Not valid with these values");
+            return;
+          }
+          setMainResult("CI95%: " + formatReps(ci.lower) + " – " + formatReps(ci.upper));
+          addListRow("Lower", formatReps(ci.lower));
+          addListRow("Upper", formatReps(ci.upper));
+          return;
+        }
+
+        var result = values[selected];
+        if (!validPositive(result)) {
+          setMainResult("Not valid with these values");
+          return;
+        }
+
+        setMainResult(formulaNames[selected] + ": " + formatReps(result));
+        addListRow(formulaNames[selected], formatReps(result));
+      }
+
+      function calculate() {
+        clearList();
+        if (modeSelect.value === "rm") {
+          calculate1RM();
+        } else {
+          calculateReps();
+        }
+      }
+
+      modeSelect.addEventListener("change", switchMode);
+      calcBtn.addEventListener("click", calculate);
+      calcBtn.addEventListener("touchend", function (event) {
+        event.preventDefault();
+        calculate();
+      }, { passive: false });
+
+      [weightInput, repsInput, weight2Input, oneRmInput].forEach(function (el) {
+        el.addEventListener("keydown", function (event) {
+          if (event.key === "Enter") calculate();
+        });
+      });
+
+      switchMode();
+    })();
   </script>
-
 </body>
 </html>
